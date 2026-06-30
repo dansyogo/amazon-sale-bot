@@ -1,0 +1,41 @@
+{
+  "keyword_items": [
+    {
+      "id": "bonbon_drop_seal",
+      "name": "ボンボンドロップシール",
+      "keywords": ["ボンボンドロップ", "ボンボンドロップシール"],
+      "search_index": "Toys",
+      "price_alert": false
+    },
+    {
+      "id": "pokemon_card",
+      "name": "ポケモンカード",
+      "keywords": ["ポケモンカード", "ポケカ"],
+      "search_index": "Toys",
+      "price_alert": false
+    },
+    {
+      "id": "onepiece_card",
+      "name": "ワンピースカード",
+      "keywords": ["ワンピースカード", "ワンピカ"],
+      "search_index": "Toys",
+      "price_alert": false
+    }
+  ],
+  "asin_items": [
+    {
+      "id": "mac_studio_m4",
+      "name": "Mac Studio (M4)",
+      "asin": "PLACEHOLDER_MAC_ASIN",
+      "price_alert": true,
+      "price_threshold_percent": 5
+    },
+    {
+      "id": "ipad_air_m3",
+      "name": "iPad Air (M3)",
+      "asin": "PLACEHOLDER_IPAD_ASIN",
+      "price_alert": true,
+      "price_threshold_percent": 5
+    }
+  ]
+}

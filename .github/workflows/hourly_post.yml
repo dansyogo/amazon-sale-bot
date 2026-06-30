@@ -1,0 +1,77 @@
+name: "① 定時投稿 (JST 9時 / 13時 / 20時・1日3回)"
+
+# ── スケジュール ──────────────────────────────────────────────────────────────
+# X API pay-per-use はリンク付きツイート $0.20/件のため投稿数を1日3回に絞る。
+# JST 9:00  = UTC 0:00
+# JST 13:00 = UTC 4:00
+# JST 20:00 = UTC 11:00
+on:
+  schedule:
+    - cron: "0 0,4,11 * * *"
+
+  # 手動実行（デバッグ用）
+  workflow_dispatch:
+
+# ── 同時実行を防ぐ ────────────────────────────────────────────────────────────
+concurrency:
+  group: hourly-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write   # posted_log.json を git push するために必要
+
+    steps:
+      # ── 1. チェックアウト ──────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── 2. Python セットアップ ─────────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # ── 3. 依存パッケージのインストール ───────────────────────────────────
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── 4. 定時投稿スクリプトの実行 ───────────────────────────────────────
+      - name: Run hourly post
+        env:
+          # Amazon PA-API
+          AMAZON_ACCESS_KEY:  ${{ secrets.AMAZON_ACCESS_KEY }}
+          AMAZON_SECRET_KEY:  ${{ secrets.AMAZON_SECRET_KEY }}
+          AMAZON_PARTNER_TAG: ${{ secrets.AMAZON_PARTNER_TAG }}
+          # Claude API
+          CLAUDE_API_KEY:     ${{ secrets.CLAUDE_API_KEY }}
+          # X (Twitter) API
+          X_API_KEY:              ${{ secrets.X_API_KEY }}
+          X_API_SECRET:           ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN:         ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET:  ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+        run: python scripts/hourly_post.py
+
+      # ── 5. posted_log.json をコミット & プッシュ ───────────────────────────
+      # スクリプトが正常終了した場合のみ（exit 0）実行される
+      - name: Commit posted_log.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 変更がなければスキップ
+          git diff --quiet data/posted_log.json && echo "No changes to commit." && exit 0
+
+          git add data/posted_log.json
+          git commit -m "chore: update posted_log.json [skip ci]"
+
+          # push 競合対策: リモートの最新を取り込んでから push
+          git pull --rebase origin main
+          git push origin main

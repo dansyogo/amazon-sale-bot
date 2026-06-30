@@ -1,0 +1,62 @@
+name: "③ ランキング急上昇検知 (1時間ごと)"
+
+# ── スケジュール ──────────────────────────────────────────────────────────────
+# ①と :30 ずらして同時実行を回避（同一時刻の cron はキューイングされるが念のため）
+# JST 7:30〜24:30 = UTC 22:30〜15:30
+on:
+  schedule:
+    - cron: "30 0-15 * * *"
+    - cron: "30 22-23 * * *"
+
+  workflow_dispatch:
+
+concurrency:
+  group: ranking-surge
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run ranking surge detector
+        env:
+          AMAZON_ACCESS_KEY:      ${{ secrets.AMAZON_ACCESS_KEY }}
+          AMAZON_SECRET_KEY:      ${{ secrets.AMAZON_SECRET_KEY }}
+          AMAZON_PARTNER_TAG:     ${{ secrets.AMAZON_PARTNER_TAG }}
+          CLAUDE_API_KEY:         ${{ secrets.CLAUDE_API_KEY }}
+          X_API_KEY:              ${{ secrets.X_API_KEY }}
+          X_API_SECRET:           ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN:         ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET:  ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+        run: python scripts/ranking_surge.py
+
+      - name: Commit updated cache and log
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add data/ranking_cache.json data/posted_log.json
+          git diff --cached --quiet && echo "No changes." && exit 0
+
+          git commit -m "chore: update ranking_cache / posted_log [skip ci]"
+          git pull --rebase origin main
+          git push origin main
