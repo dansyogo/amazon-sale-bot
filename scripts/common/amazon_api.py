@@ -43,7 +43,7 @@ class AmazonPAAPI:
                 "grant_type":    "client_credentials",
                 "client_id":     self.client_id,
                 "client_secret": self.client_secret,
-                "scope":         "paapi5",
+                "scope":         "creatorsapi::default",
             },
             timeout=15,
         )
