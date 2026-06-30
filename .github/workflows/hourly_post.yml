@@ -46,6 +46,7 @@ jobs:
       # ── 4. 定時投稿スクリプトの実行 ───────────────────────────────────────
       - name: Run hourly post
         env:
+          PYTHONUNBUFFERED: "1"
           # Amazon PA-API
           AMAZON_ACCESS_KEY:  ${{ secrets.AMAZON_ACCESS_KEY }}
           AMAZON_SECRET_KEY:  ${{ secrets.AMAZON_SECRET_KEY }}
@@ -57,7 +58,7 @@ jobs:
           X_API_SECRET:           ${{ secrets.X_API_SECRET }}
           X_ACCESS_TOKEN:         ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_TOKEN_SECRET:  ${{ secrets.X_ACCESS_TOKEN_SECRET }}
-        run: python scripts/hourly_post.py
+        run: python -u scripts/hourly_post.py
 
       # ── 5. posted_log.json をコミット & プッシュ ───────────────────────────
       # スクリプトが正常終了した場合のみ（exit 0）実行される
