@@ -3,8 +3,8 @@ Amazon Product Advertising API v5 クライアント
 Creators API (OAuth2 client_credentials) で認証する。
 
 環境変数:
-  AMAZON_ACCESS_KEY  : OAuth2 Client ID  (amzn1.application-oa2-client.xxx)
-  AMAZON_SECRET_KEY  : OAuth2 Client Secret
+  AMAZON_ACCESS_KEY  : 認証情報ID  (amzn1.application-oa2-client.xxx)
+  AMAZON_SECRET_KEY  : シークレット (amzn1.oa2-cs.v1.xxx)
   AMAZON_PARTNER_TAG : アソシエイトタグ (例: kamenmankun-22)
 """
 
@@ -31,9 +31,11 @@ class AmazonPAAPI:
     # ── OAuth2 トークン取得 ───────────────────────────────────────────────────
 
     def _get_token(self) -> str:
-        """アクセストークンを取得・キャッシュする（期限切れなら再取得）。"""
         if self._token and time.time() < self._token_expires - 60:
             return self._token
+
+        print(f"[amazon_api] token request to {self.TOKEN_URL}")
+        print(f"[amazon_api] client_id prefix: {self.client_id[:40]}...")
 
         resp = requests.post(
             self.TOKEN_URL,
@@ -44,13 +46,13 @@ class AmazonPAAPI:
             },
             timeout=15,
         )
-        if not resp.ok:
-            print(f"[amazon_api] token error {resp.status_code}: {resp.text[:300]}")
+        print(f"[amazon_api] token response {resp.status_code}: {resp.text}")  # 全文出力
         resp.raise_for_status()
+
         data = resp.json()
-        print(f"[amazon_api] token obtained. expires_in={data.get('expires_in')}")
         self._token         = data["access_token"]
         self._token_expires = time.time() + data.get("expires_in", 3600)
+        print(f"[amazon_api] token OK. expires_in={data.get('expires_in')}")
         return self._token
 
     # ── PA-API リクエスト ─────────────────────────────────────────────────────
@@ -60,16 +62,15 @@ class AmazonPAAPI:
         url   = f"{self.BASE_URL}/{operation.lower()}"
 
         headers = {
-            "Content-Type": "application/json",
+            "Content-Type":  "application/json",
             "Authorization": f"Bearer {token}",
-            "x-amz-target": (
-                f"com.amazon.paapi5.v1.ProductAdvertisingAPIv1.{operation}"
-            ),
+            "x-amz-target":  f"com.amazon.paapi5.v1.ProductAdvertisingAPIv1.{operation}",
         }
 
+        print(f"[amazon_api] → {operation}")
         resp = requests.post(url, headers=headers, json=payload, timeout=20)
         if not resp.ok:
-            print(f"[amazon_api] API error {resp.status_code}: {resp.text[:300]}")
+            print(f"[amazon_api] API error {resp.status_code}: {resp.text[:500]}")
         resp.raise_for_status()
         return resp.json()
 
@@ -81,15 +82,14 @@ class AmazonPAAPI:
         min_saving_percent: int = 20,
         item_count: int = 10,
     ) -> list[dict]:
-        """割引商品を検索し、星3以上の商品リストを返す。"""
         payload = {
-            "PartnerTag":        self.partner_tag,
-            "PartnerType":       "Associates",
-            "Marketplace":       self.MARKETPLACE,
-            "Keywords":          "セール 割引",
-            "SearchIndex":       search_index,
-            "ItemCount":         item_count,
-            "MinSavingPercent":  min_saving_percent,
+            "PartnerTag":       self.partner_tag,
+            "PartnerType":      "Associates",
+            "Marketplace":      self.MARKETPLACE,
+            "Keywords":         "セール 割引",
+            "SearchIndex":      search_index,
+            "ItemCount":        item_count,
+            "MinSavingPercent": min_saving_percent,
             "Resources": [
                 "ItemInfo.Title",
                 "Offers.Listings.Price",
@@ -105,7 +105,6 @@ class AmazonPAAPI:
         return [p for p in parsed if p and p["star_rating"] >= 3.0]
 
     def get_items(self, asins: list[str]) -> list[dict]:
-        """ASIN リストから商品情報を取得する（速報検知・ランキング用）。"""
         payload = {
             "PartnerTag":  self.partner_tag,
             "PartnerType": "Associates",
@@ -127,7 +126,6 @@ class AmazonPAAPI:
     def get_browse_node_items(
         self, browse_node_id: str, item_count: int = 10
     ) -> list[dict]:
-        """ブラウズノードの売れ筋商品を取得する（ランキング用）。"""
         payload = {
             "PartnerTag":   self.partner_tag,
             "PartnerType":  "Associates",
