@@ -41,12 +41,14 @@ class AmazonPAAPI:
                 "grant_type":    "client_credentials",
                 "client_id":     self.client_id,
                 "client_secret": self.client_secret,
-                "scope":         "advertising::audiences",
             },
             timeout=15,
         )
+        if not resp.ok:
+            print(f"[amazon_api] token error {resp.status_code}: {resp.text[:300]}")
         resp.raise_for_status()
         data = resp.json()
+        print(f"[amazon_api] token obtained. expires_in={data.get('expires_in')}")
         self._token         = data["access_token"]
         self._token_expires = time.time() + data.get("expires_in", 3600)
         return self._token
@@ -66,6 +68,8 @@ class AmazonPAAPI:
         }
 
         resp = requests.post(url, headers=headers, json=payload, timeout=20)
+        if not resp.ok:
+            print(f"[amazon_api] API error {resp.status_code}: {resp.text[:300]}")
         resp.raise_for_status()
         return resp.json()
 
