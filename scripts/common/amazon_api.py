@@ -72,7 +72,7 @@ class AmazonPAAPI:
         print(f"[amazon_api] → POST {url}")
         resp = requests.post(url, headers=headers, json=payload, timeout=20)
         if not resp.ok:
-            print(f"[amazon_api] error {resp.status_code}: {resp.text[:500]}")
+            print(f"[amazon_api] error {resp.status_code}: {resp.text}")  # 全文出力
             resp.raise_for_status()
 
         result = resp.json()
@@ -99,12 +99,8 @@ class AmazonPAAPI:
             "itemCount":         item_count,
             "minSavingPercent":  min_saving_percent,
             "resources": [
-                "itemInfo.title",
                 "offersV2.listings.price",
-                "offersV2.listings.savingBasis",
-                "customerReviews.count",
                 "customerReviews.starRating",
-                "browseNodeInfo.websiteSalesRank",
             ],
         }
         result = self._make_request("searchItems", payload)
@@ -119,6 +115,9 @@ class AmazonPAAPI:
             search_result.get("Items") or []
         )
         print(f"[amazon_api] searchItems: {len(raw_items)} raw items")
+        if raw_items:
+            import json as _json
+            print(f"[amazon_api] first item sample: {_json.dumps(raw_items[0], ensure_ascii=False)[:600]}")
 
         parsed = [self._parse_item(i) for i in raw_items]
         return [p for p in parsed if p and p["star_rating"] >= 3.0]
@@ -164,12 +163,8 @@ class AmazonPAAPI:
             "sortBy":       "Featured",
             "itemCount":    item_count,
             "resources": [
-                "itemInfo.title",
                 "offersV2.listings.price",
-                "offersV2.listings.savingBasis",
-                "customerReviews.count",
                 "customerReviews.starRating",
-                "browseNodeInfo.websiteSalesRank",
             ],
         }
         result = self._make_request("searchItems", payload)
